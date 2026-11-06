@@ -108,7 +108,6 @@
         const csvText = await response.text();
         const rows = parseCSV(csvText);
 
-        // Como la Columna A ahora es "Nivel", buscamos row[0] === 'A2'
         allExercises = rows
           .filter(row => row.length > 5 && row[0] === 'A2' && row[5] && row[5] !== 'Instrucción / Pregunta')
           .map(row => {
