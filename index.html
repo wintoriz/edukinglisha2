@@ -125,18 +125,18 @@
       }
     }
 
-    // Función para reproducir SOLO el texto dentro de comillas en inglés
+    // Función para reproducir SOLO el texto dentro de comillas
     function playEnglishSentence(text) {
       if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); // Detener audios previos
+        window.speechSynthesis.cancel();
         
-        // Extraer texto entre comillas dobles
-        const match = text.match(/"([^"]+)"/);
+        // Extrae el texto entre comillas dobles "" o simples ''
+        const match = text.match(/["'“]([^"'”]+)["'”]/);
         const sentenceToRead = match ? match[1] : text;
 
         const utterance = new SpeechSynthesisUtterance(sentenceToRead);
         utterance.lang = 'en-US';
-        utterance.rate = 0.9; // Velocidad ligeramente pausada para entrenamiento
+        utterance.rate = 0.85; // Velocidad pausada
         window.speechSynthesis.speak(utterance);
       }
     }
@@ -238,9 +238,9 @@
       const ex = exercises[currentIndex];
       let optionsHTML = '';
       ex.opciones.forEach(opt => {
-        const cleanOpt = opt.replace(/'/g, "\\'");
-        const cleanAns = ex.respuesta.replace(/'/g, "\\'");
-        const cleanFb = ex.feedback.replace(/'/g, "\\'");
+        const cleanOpt = opt.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const cleanAns = ex.respuesta.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const cleanFb = ex.feedback.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         optionsHTML += `
           <button onclick="checkAnswer('${cleanOpt}', '${cleanAns}', '${cleanFb}')" 
                   class="w-full bg-slate-700/80 hover:bg-purple-600/60 border border-purple-500/30 text-white font-semibold py-3.5 px-4 rounded-2xl text-left transition transform active:scale-95 shadow">
@@ -249,18 +249,7 @@
         `;
       });
 
-      // Evaluar si incluye botón de reproducción de audio
-      const cleanPregunta = ex.pregunta.replace(/'/g, "\\'");
-      const hasAudio = ex.tipo.toLowerCase().includes('listening') || ex.pregunta.includes('"');
-
-      const audioButtonHTML = hasAudio ? `
-        <div class="mb-6">
-          <button onclick="playEnglishSentence('${cleanPregunta}')" 
-                  class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-6 rounded-2xl transition flex items-center gap-2 shadow-lg transform active:scale-95">
-            <span class="text-xl">🔊</span> Reproducir Audio en Inglés
-          </button>
-        </div>
-      ` : '';
+      const cleanPregunta = ex.pregunta.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
       container.innerHTML = `
         <div class="bg-slate-800/80 border border-purple-500/30 rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-md">
@@ -276,7 +265,13 @@
           
           <h3 class="text-lg md:text-xl font-bold text-white mb-4 leading-relaxed">${ex.pregunta}</h3>
 
-          ${audioButtonHTML}
+          <!-- Botón de Audio Siempre Presente -->
+          <div class="mb-6">
+            <button onclick="playEnglishSentence('${cleanPregunta}')" 
+                    class="bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3 px-6 rounded-2xl transition flex items-center gap-3 shadow-lg transform active:scale-95 border border-purple-400/40">
+              <span class="text-2xl animate-pulse">🔊</span> Escuchar Oración en Inglés
+            </button>
+          </div>
 
           <div class="space-y-3 mb-6">
             ${optionsHTML}
@@ -310,7 +305,7 @@
     }
 
     function nextExercise(totalInDay) {
-      window.speechSynthesis.cancel(); // Detener voz al cambiar de ejercicio
+      window.speechSynthesis.cancel();
       if (currentIndex < totalInDay - 1) {
         currentIndex++;
         renderExerciseScreen();
