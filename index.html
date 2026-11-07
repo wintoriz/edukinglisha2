@@ -57,6 +57,7 @@
     let currentModule = 1;
     let currentDay = 1;
     let currentIndex = 0;
+    let unscrambleBuilt = []; // Almacena el orden creado por el usuario en 'Sentence Unscramble'
 
     let unlockedModule = parseInt(localStorage.getItem('a2_unlocked_module')) || 1;
     let unlockedDay = parseInt(localStorage.getItem('a2_unlocked_day')) || 1;
@@ -125,21 +126,16 @@
       }
     }
 
-    // Reproducción de audio inteligente (Filtra "___" para evitar pronunciar "underscore")
     function playEnglishSentence(text) {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
-        
-        // Extraer lo que está en comillas o tomar el texto completo
         const match = text.match(/["'“]([^"'”]+)["'”]/);
         let sentenceToRead = match ? match[1] : text;
-
-        // Reemplazar los guiones bajos por una breve pausa limpia
         sentenceToRead = sentenceToRead.replace(/_+/g, '... ');
 
         const utterance = new SpeechSynthesisUtterance(sentenceToRead);
         utterance.lang = 'en-US';
-        utterance.rate = 0.85; // Velocidad cómoda de aprendizaje
+        utterance.rate = 0.85;
         window.speechSynthesis.speak(utterance);
       }
     }
@@ -240,26 +236,70 @@
 
       const ex = exercises[currentIndex];
       const progressPercent = Math.round(((currentIndex + 1) / exercises.length) * 100);
+      const isUnscramble = ex.tipo.toLowerCase().includes('unscramble');
+      const isListening = ex.tipo.toLowerCase().includes('listening');
 
-      let optionsHTML = '';
-      ex.opciones.forEach(opt => {
-        const cleanOpt = opt.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        const cleanAns = ex.respuesta.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        const cleanFb = ex.feedback.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        optionsHTML += `
-          <button onclick="checkAnswer('${cleanOpt}', '${cleanAns}', '${cleanFb}')" 
-                  class="w-full bg-slate-700/80 hover:bg-purple-600/60 border border-purple-500/30 text-white font-semibold py-3.5 px-4 rounded-2xl text-left transition transform active:scale-95 shadow">
-            ${opt}
-          </button>
-        `;
-      });
-
+      // Botón de Audio SOLO en ejercicios de tipo Listening
       const cleanPregunta = ex.pregunta.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      const audioButtonHTML = isListening ? `
+        <div class="mb-6">
+          <button onclick="playEnglishSentence('${cleanPregunta}')" 
+                  class="bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3 px-6 rounded-2xl transition flex items-center gap-3 shadow-lg transform active:scale-95 border border-purple-400/40">
+            <span class="text-2xl animate-pulse">🔊</span> Escuchar Oración en Inglés
+          </button>
+        </div>
+      ` : '';
+
+      let contentHTML = '';
+
+      if (isUnscramble) {
+        unscrambleBuilt = [];
+        contentHTML = `
+          <div class="bg-slate-900/60 border border-purple-500/30 rounded-2xl p-4 min-h-[64px] mb-4 flex flex-wrap gap-2 items-center" id="unscramble-target">
+            <span class="text-slate-500 text-sm italic">Toca las palabras abajo para construir la oración...</span>
+          </div>
+
+          <div class="flex flex-wrap gap-2 mb-6" id="unscramble-source">
+            ${ex.opciones.map((opt, i) => `
+              <button id="word-btn-${i}" onclick="pickWord('${opt.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', ${i})" 
+                      class="bg-slate-700 hover:bg-purple-600/80 border border-purple-400/30 text-white font-bold py-2.5 px-4 rounded-xl shadow transition transform active:scale-95">
+                ${opt}
+              </button>
+            `).join('')}
+          </div>
+
+          <div class="flex gap-3 mb-6">
+            <button onclick="checkUnscramble('${ex.respuesta.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${ex.feedback.replace(/'/g, "\\'").replace(/"/g, '&quot;')}')" 
+                    class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-6 py-2.5 rounded-xl shadow-lg transition transform active:scale-95">
+              Comprobar Orden
+            </button>
+            <button onclick="resetUnscramble()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold px-4 py-2.5 rounded-xl transition">
+              Reiniciar
+            </button>
+          </div>
+        `;
+      } else {
+        // Ejercicios normales de opción múltiple / selección
+        contentHTML = `
+          <div class="space-y-3 mb-6">
+            ${ex.opciones.map(opt => {
+              const cleanOpt = opt.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+              const cleanAns = ex.respuesta.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+              const cleanFb = ex.feedback.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+              return `
+                <button onclick="checkAnswer('${cleanOpt}', '${cleanAns}', '${cleanFb}')" 
+                        class="w-full bg-slate-700/80 hover:bg-purple-600/60 border border-purple-500/30 text-white font-semibold py-3.5 px-4 rounded-2xl text-left transition transform active:scale-95 shadow">
+                  ${opt}
+                </button>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
 
       container.innerHTML = `
         <div class="bg-slate-800/80 border border-purple-500/30 rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-md">
           
-          <!-- Encabezado con Progreso -->
           <div class="flex items-center justify-between mb-3 border-b border-purple-500/20 pb-3">
             <button onclick="renderDaySelection()" class="text-xs text-purple-300 font-bold hover:text-white">
               ← Salir al menú
@@ -270,31 +310,18 @@
             </div>
           </div>
 
-          <!-- Barra de Progreso Dinámica -->
           <div class="w-full bg-slate-900/60 h-2.5 rounded-full overflow-hidden mb-6 border border-purple-500/20">
             <div class="bg-gradient-to-r from-purple-500 to-indigo-400 h-full transition-all duration-300" style="width: ${progressPercent}%"></div>
           </div>
           
-          <!-- Pregunta -->
           <h3 class="text-lg md:text-xl font-bold text-white mb-4 leading-relaxed">${ex.pregunta}</h3>
 
-          <!-- Botón de Reproducción de Audio -->
-          <div class="mb-6">
-            <button onclick="playEnglishSentence('${cleanPregunta}')" 
-                    class="bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3 px-6 rounded-2xl transition flex items-center gap-3 shadow-lg transform active:scale-95 border border-purple-400/40">
-              <span class="text-2xl animate-pulse">🔊</span> Escuchar Oración en Inglés
-            </button>
-          </div>
+          ${audioButtonHTML}
 
-          <!-- Opciones de Respuesta -->
-          <div class="space-y-3 mb-6">
-            ${optionsHTML}
-          </div>
+          ${contentHTML}
 
-          <!-- Retroalimentación con Feedback Pedagógico -->
           <div id="feedback-box" class="hidden p-4 rounded-2xl mb-4 text-sm font-semibold"></div>
 
-          <!-- Navegación -->
           <div class="flex justify-between items-center pt-4 border-t border-purple-500/20">
             <button onclick="prevExercise()" ${currentIndex === 0 ? 'disabled class="opacity-40 cursor-not-allowed text-slate-500 text-sm font-bold"' : 'class="text-purple-300 hover:text-white text-sm font-bold"'}>
               ← Anterior
@@ -307,11 +334,66 @@
       `;
     }
 
+    // Funciones para armar la oración interactiva
+    function pickWord(word, btnIndex) {
+      const btn = document.getElementById(`word-btn-${btnIndex}`);
+      if (btn) btn.disabled = true; btn.classList.add('opacity-30', 'pointer-events-none');
+      
+      unscrambleBuilt.push({ word, btnIndex });
+      renderUnscrambleTarget();
+    }
+
+    function removeWord(builtIndex) {
+      const item = unscrambleBuilt[builtIndex];
+      const btn = document.getElementById(`word-btn-${item.btnIndex}`);
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-30', 'pointer-events-none');
+      }
+      unscrambleBuilt.splice(builtIndex, 1);
+      renderUnscrambleTarget();
+    }
+
+    function resetUnscramble() {
+      unscrambleBuilt.forEach(item => {
+        const btn = document.getElementById(`word-btn-${item.btnIndex}`);
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('opacity-30', 'pointer-events-none');
+        }
+      });
+      unscrambleBuilt = [];
+      renderUnscrambleTarget();
+    }
+
+    function renderUnscrambleTarget() {
+      const target = document.getElementById('unscramble-target');
+      if (unscrambleBuilt.length === 0) {
+        target.innerHTML = `<span class="text-slate-500 text-sm italic">Toca las palabras abajo para construir la oración...</span>`;
+      } else {
+        target.innerHTML = unscrambleBuilt.map((item, idx) => `
+          <button onclick="removeWord(${idx})" class="bg-purple-600 hover:bg-purple-700 text-white font-extrabold px-3 py-1.5 rounded-xl text-sm transition">
+            ${item.word} ✕
+          </button>
+        `).join('');
+      }
+    }
+
+    function checkUnscramble(correct, feedback) {
+      const userString = unscrambleBuilt.map(i => i.word).join(' ').trim();
+      const cleanCorrect = correct.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").toLowerCase();
+      const cleanUser = userString.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").toLowerCase();
+
+      checkAnswer(cleanUser, cleanCorrect, feedback);
+    }
+
     function checkAnswer(selected, correct, feedback) {
       const fbBox = document.getElementById('feedback-box');
       fbBox.classList.remove('hidden', 'bg-emerald-500/20', 'text-emerald-300', 'border-emerald-500/40', 'bg-rose-500/20', 'text-rose-300', 'border-rose-500/40');
       
-      if (selected === correct) {
+      const isCorrect = selected.toLowerCase() === correct.toLowerCase();
+
+      if (isCorrect) {
         fbBox.classList.add('bg-emerald-500/20', 'text-emerald-300', 'border', 'border-emerald-500/40');
         fbBox.innerHTML = `🥳 <strong>¡Excelente!</strong> ${feedback || 'Respuesta correcta.'}`;
       } else {
