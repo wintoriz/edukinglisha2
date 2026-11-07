@@ -58,7 +58,6 @@
     let currentDay = 1;
     let currentIndex = 0;
 
-    // Sistema de Progreso guardado en el navegador
     let unlockedModule = parseInt(localStorage.getItem('a2_unlocked_module')) || 1;
     let unlockedDay = parseInt(localStorage.getItem('a2_unlocked_day')) || 1;
 
@@ -126,7 +125,22 @@
       }
     }
 
-    // 1. Vista de Selección de Módulos (1 a 10)
+    // Función para reproducir SOLO el texto dentro de comillas en inglés
+    function playEnglishSentence(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); // Detener audios previos
+        
+        // Extraer texto entre comillas dobles
+        const match = text.match(/"([^"]+)"/);
+        const sentenceToRead = match ? match[1] : text;
+
+        const utterance = new SpeechSynthesisUtterance(sentenceToRead);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.9; // Velocidad ligeramente pausada para entrenamiento
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
     function renderModuleSelection() {
       const container = document.getElementById('view-container');
       let modulesHTML = '';
@@ -169,7 +183,6 @@
       renderDaySelection();
     }
 
-    // 2. Vista de Selección de Días (1, 2 y 3)
     function renderDaySelection() {
       const container = document.getElementById('view-container');
       let daysHTML = '';
@@ -208,7 +221,6 @@
       renderExerciseScreen();
     }
 
-    // 3. Vista de Ejercicios
     function renderExerciseScreen() {
       const exercises = allExercises.filter(ex => ex.moduloNum === currentModule && ex.diaNum === currentDay);
       const container = document.getElementById('view-container');
@@ -237,6 +249,19 @@
         `;
       });
 
+      // Evaluar si incluye botón de reproducción de audio
+      const cleanPregunta = ex.pregunta.replace(/'/g, "\\'");
+      const hasAudio = ex.tipo.toLowerCase().includes('listening') || ex.pregunta.includes('"');
+
+      const audioButtonHTML = hasAudio ? `
+        <div class="mb-6">
+          <button onclick="playEnglishSentence('${cleanPregunta}')" 
+                  class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-6 rounded-2xl transition flex items-center gap-2 shadow-lg transform active:scale-95">
+            <span class="text-xl">🔊</span> Reproducir Audio en Inglés
+          </button>
+        </div>
+      ` : '';
+
       container.innerHTML = `
         <div class="bg-slate-800/80 border border-purple-500/30 rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-md">
           <div class="flex items-center justify-between mb-4 border-b border-purple-500/20 pb-3">
@@ -249,7 +274,9 @@
             </div>
           </div>
           
-          <h3 class="text-lg md:text-xl font-bold text-white mb-6 leading-relaxed">${ex.pregunta}</h3>
+          <h3 class="text-lg md:text-xl font-bold text-white mb-4 leading-relaxed">${ex.pregunta}</h3>
+
+          ${audioButtonHTML}
 
           <div class="space-y-3 mb-6">
             ${optionsHTML}
@@ -283,11 +310,11 @@
     }
 
     function nextExercise(totalInDay) {
+      window.speechSynthesis.cancel(); // Detener voz al cambiar de ejercicio
       if (currentIndex < totalInDay - 1) {
         currentIndex++;
         renderExerciseScreen();
       } else {
-        // Desbloquear siguiente Día o Módulo
         if (currentDay < 3) {
           if (currentModule === unlockedModule && currentDay === unlockedDay) {
             unlockedDay++;
@@ -306,6 +333,7 @@
     }
 
     function prevExercise() {
+      window.speechSynthesis.cancel();
       if (currentIndex > 0) {
         currentIndex--;
         renderExerciseScreen();
