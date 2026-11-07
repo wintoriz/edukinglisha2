@@ -13,7 +13,7 @@
 </head>
 <body class="bg-slate-900 min-h-screen text-slate-100 flex flex-col justify-between bg-gradient-to-br from-purple-950 via-slate-900 to-indigo-950">
 
-  <!-- Barra Superior de Navegación -->
+  <!-- Encabezado -->
   <header class="w-full bg-purple-900/40 border-b border-purple-500/30 backdrop-blur-md sticky top-0 z-50">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -35,26 +35,13 @@
 
   <!-- Contenido Principal -->
   <main class="w-full max-w-4xl mx-auto px-4 py-8 flex-grow">
-    
-    <div class="bg-gradient-to-r from-purple-900/60 to-indigo-900/60 border border-purple-500/40 rounded-3xl p-6 mb-8 text-center shadow-xl">
-      <div class="w-20 h-20 bg-purple-500/20 border-2 border-purple-400 rounded-2xl mx-auto mb-3 flex items-center justify-center text-4xl shadow-inner">
-        🐰
-      </div>
-      <h2 class="text-3xl font-bold text-white font-heading">¡Bienvenido al Nivel A2!</h2>
-      <p class="text-purple-200 text-sm mt-1 max-w-lg mx-auto">
-        Acompaña a Mooney en misiones más avanzadas: Pasado simple, historias de detectives, conversaciones y más vocabulario.
-      </p>
-    </div>
-
-    <!-- Contenedor de Ejercicios -->
-    <div id="app-container" class="bg-slate-800/80 border border-purple-500/30 rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-md">
+    <div id="view-container">
       <div class="text-center py-12">
         <span class="text-4xl animate-bounce block mb-3">🔍</span>
         <h3 class="text-xl font-bold text-purple-300">Cargando Misiones de Mooney...</h3>
         <p class="text-slate-400 text-sm mt-2">Conectando con la base de datos de Edukinglish A2</p>
       </div>
     </div>
-
   </main>
 
   <!-- Pie de Página -->
@@ -67,7 +54,13 @@
     const EXERCISES_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Nivel%20A2`;
 
     let allExercises = [];
+    let currentModule = 1;
+    let currentDay = 1;
     let currentIndex = 0;
+
+    // Sistema de Progreso guardado en el navegador
+    let unlockedModule = parseInt(localStorage.getItem('a2_unlocked_module')) || 1;
+    let unlockedDay = parseInt(localStorage.getItem('a2_unlocked_day')) || 1;
 
     function parseCSV(text) {
       const lines = text.split('\n');
@@ -75,21 +68,17 @@
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
-        
         const row = [];
         let insideQuotes = false;
         let entry = '';
-        
         for (let j = 0; j < line.length; j++) {
           const char = line[j];
           if (char === '"' && line[j+1] === '"') {
-            entry += '"';
-            j++;
+            entry += '"'; j++;
           } else if (char === '"') {
             insideQuotes = !insideQuotes;
           } else if (char === ',' && !insideQuotes) {
-            row.push(entry.trim());
-            entry = '';
+            row.push(entry.trim()); entry = '';
           } else {
             entry += char;
           }
@@ -103,18 +92,20 @@
     async function loadExercises() {
       try {
         const response = await fetch(EXERCISES_URL);
-        if (!response.ok) throw new Error("Error al descargar los datos");
-        
+        if (!response.ok) throw new Error("Error en la descarga de datos");
         const csvText = await response.text();
         const rows = parseCSV(csvText);
 
         allExercises = rows
           .filter(row => row.length > 5 && row[0] === 'A2' && row[5] && row[5] !== 'Instrucción / Pregunta')
           .map(row => {
+            const modNum = parseInt((row[1] || '').replace('Módulo', '').trim()) || 1;
+            const dayNum = parseInt(row[2]) || 1;
             return {
               nivel: row[0] || '',
-              modulo: row[1] || '',
-              dia: row[2] || '',
+              moduloStr: row[1] || '',
+              moduloNum: modNum,
+              diaNum: dayNum,
               ejercicioNum: row[3] || '',
               tipo: row[4] || '',
               pregunta: row[5] || '',
@@ -125,29 +116,114 @@
           });
 
         if (allExercises.length > 0) {
-          renderExercise(0);
+          renderModuleSelection();
         } else {
-          document.getElementById('app-container').innerHTML = `
-            <div class="text-center py-8 text-amber-400">
-              <p class="font-bold">No se encontraron preguntas válidas en la base de datos.</p>
-            </div>
-          `;
+          document.getElementById('view-container').innerHTML = `<div class="text-center py-8 text-amber-400"><p class="font-bold">No se encontraron preguntas válidas.</p></div>`;
         }
       } catch (error) {
         console.error("Error al cargar ejercicios:", error);
-        document.getElementById('app-container').innerHTML = `
-          <div class="text-center py-8 text-rose-400">
-            <p class="font-bold text-lg">Error al conectar con la base de datos de Google Sheets.</p>
-            <p class="text-xs text-slate-300 mt-2">Verifica la conexión a internet y refresca la página.</p>
-          </div>
-        `;
+        document.getElementById('view-container').innerHTML = `<div class="text-center py-8 text-rose-400"><p class="font-bold text-lg">Error al conectar con Google Sheets.</p></div>`;
       }
     }
 
-    function renderExercise(index) {
-      const ex = allExercises[index];
-      const container = document.getElementById('app-container');
+    // 1. Vista de Selección de Módulos (1 a 10)
+    function renderModuleSelection() {
+      const container = document.getElementById('view-container');
+      let modulesHTML = '';
 
+      for (let m = 1; m <= 10; m++) {
+        const isUnlocked = m <= unlockedModule;
+        modulesHTML += `
+          <div onclick="${isUnlocked ? `selectModule(${m})` : ''}" 
+               class="p-5 rounded-3xl border ${isUnlocked ? 'bg-slate-800/80 hover:bg-purple-900/40 border-purple-500/40 cursor-pointer shadow-lg transform hover:-translate-y-1 transition' : 'bg-slate-900/50 border-slate-800 opacity-50 cursor-not-allowed'} flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl ${isUnlocked ? 'bg-purple-500/20 text-purple-300 border border-purple-400/40' : 'bg-slate-800 text-slate-500'} flex items-center justify-center font-bold text-lg font-heading">
+                ${m}
+              </div>
+              <div>
+                <h4 class="font-bold text-white font-heading text-lg">Módulo ${m}</h4>
+                <p class="text-xs text-slate-400">${isUnlocked ? '3 Días · 15 Misiones' : 'Bloqueado 🔒'}</p>
+              </div>
+            </div>
+            <span class="text-xl">${isUnlocked ? '➡️' : '🔒'}</span>
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        <div class="bg-gradient-to-r from-purple-900/60 to-indigo-900/60 border border-purple-500/40 rounded-3xl p-6 mb-8 text-center shadow-xl">
+          <div class="w-20 h-20 bg-purple-500/20 border-2 border-purple-400 rounded-2xl mx-auto mb-3 flex items-center justify-center text-4xl shadow-inner">
+            🐰
+          </div>
+          <h2 class="text-3xl font-bold text-white font-heading">Misiones de Mooney (A2)</h2>
+          <p class="text-purple-200 text-sm mt-1 max-w-lg mx-auto">Selecciona tu módulo actual para continuar tu aprendizaje.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          ${modulesHTML}
+        </div>
+      `;
+    }
+
+    function selectModule(m) {
+      currentModule = m;
+      renderDaySelection();
+    }
+
+    // 2. Vista de Selección de Días (1, 2 y 3)
+    function renderDaySelection() {
+      const container = document.getElementById('view-container');
+      let daysHTML = '';
+
+      for (let d = 1; d <= 3; d++) {
+        const isUnlocked = (currentModule < unlockedModule) || (currentModule === unlockedModule && d <= unlockedDay);
+        daysHTML += `
+          <div onclick="${isUnlocked ? `selectDay(${d})` : ''}" 
+               class="p-6 rounded-3xl border ${isUnlocked ? 'bg-slate-800/80 hover:bg-purple-900/40 border-purple-500/40 cursor-pointer shadow-lg transform hover:-translate-y-1 transition' : 'bg-slate-900/50 border-slate-800 opacity-50 cursor-not-allowed'} flex flex-col items-center text-center">
+            <span class="text-3xl mb-2">${isUnlocked ? '⭐' : '🔒'}</span>
+            <h4 class="font-bold text-white font-heading text-xl mb-1">Día ${d}</h4>
+            <p class="text-xs text-slate-400 mb-4">5 Ejercicios prácticos</p>
+            <button ${isUnlocked ? '' : 'disabled'} class="w-full ${isUnlocked ? 'bg-purple-600 hover:bg-purple-500 text-white' : 'bg-slate-800 text-slate-500'} font-extrabold py-2.5 rounded-xl text-xs transition">
+              ${isUnlocked ? 'Iniciar Misión' : 'Bloqueado'}
+            </button>
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        <div class="flex items-center justify-between mb-6">
+          <button onclick="renderModuleSelection()" class="text-xs text-purple-300 font-bold hover:text-white flex items-center gap-1">
+            ← Cambiar de Módulo
+          </button>
+          <span class="text-xs bg-purple-500/20 text-purple-300 font-bold px-3 py-1 rounded-full uppercase">Módulo ${currentModule}</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          ${daysHTML}
+        </div>
+      `;
+    }
+
+    function selectDay(d) {
+      currentDay = d;
+      currentIndex = 0;
+      renderExerciseScreen();
+    }
+
+    // 3. Vista de Ejercicios
+    function renderExerciseScreen() {
+      const exercises = allExercises.filter(ex => ex.moduloNum === currentModule && ex.diaNum === currentDay);
+      const container = document.getElementById('view-container');
+
+      if (!exercises || exercises.length === 0) {
+        container.innerHTML = `
+          <div class="bg-slate-800 border border-purple-500/30 rounded-3xl p-8 text-center">
+            <p class="text-amber-400 font-bold mb-4">No hay ejercicios cargados para este día aún.</p>
+            <button onclick="renderDaySelection()" class="bg-purple-600 text-white font-bold px-4 py-2 rounded-xl text-xs">Volver a los Días</button>
+          </div>
+        `;
+        return;
+      }
+
+      const ex = exercises[currentIndex];
       let optionsHTML = '';
       ex.opciones.forEach(opt => {
         const cleanOpt = opt.replace(/'/g, "\\'");
@@ -155,33 +231,40 @@
         const cleanFb = ex.feedback.replace(/'/g, "\\'");
         optionsHTML += `
           <button onclick="checkAnswer('${cleanOpt}', '${cleanAns}', '${cleanFb}')" 
-                  class="w-full bg-slate-700/80 hover:bg-purple-600/60 border border-purple-500/30 text-white font-semibold py-3 px-4 rounded-xl text-left transition transform active:scale-95 shadow">
+                  class="w-full bg-slate-700/80 hover:bg-purple-600/60 border border-purple-500/30 text-white font-semibold py-3.5 px-4 rounded-2xl text-left transition transform active:scale-95 shadow">
             ${opt}
           </button>
         `;
       });
 
       container.innerHTML = `
-        <div class="flex items-center justify-between mb-4 border-b border-purple-500/20 pb-3">
-          <span class="text-xs font-bold text-purple-400 uppercase tracking-widest">${ex.modulo} · Día ${ex.dia}</span>
-          <span class="text-xs bg-purple-500/20 text-purple-300 font-bold px-2.5 py-1 rounded-lg">Ejercicio ${index + 1} de ${allExercises.length}</span>
-        </div>
-        
-        <h3 class="text-lg md:text-xl font-bold text-white mb-6 leading-relaxed">${ex.pregunta}</h3>
+        <div class="bg-slate-800/80 border border-purple-500/30 rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-md">
+          <div class="flex items-center justify-between mb-4 border-b border-purple-500/20 pb-3">
+            <button onclick="renderDaySelection()" class="text-xs text-purple-300 font-bold hover:text-white">
+              ← Salir al menú del Módulo
+            </button>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-purple-400 uppercase tracking-widest">Módulo ${currentModule} · Día ${currentDay}</span>
+              <span class="text-xs bg-purple-500/20 text-purple-300 font-bold px-2.5 py-1 rounded-lg">Ejercicio ${currentIndex + 1} de ${exercises.length}</span>
+            </div>
+          </div>
+          
+          <h3 class="text-lg md:text-xl font-bold text-white mb-6 leading-relaxed">${ex.pregunta}</h3>
 
-        <div class="space-y-3 mb-6">
-          ${optionsHTML}
-        </div>
+          <div class="space-y-3 mb-6">
+            ${optionsHTML}
+          </div>
 
-        <div id="feedback-box" class="hidden p-4 rounded-2xl mb-4 text-sm font-semibold"></div>
+          <div id="feedback-box" class="hidden p-4 rounded-2xl mb-4 text-sm font-semibold"></div>
 
-        <div class="flex justify-between items-center pt-4 border-t border-purple-500/20">
-          <button onclick="prevExercise()" ${index === 0 ? 'disabled class="opacity-40 cursor-not-allowed text-slate-500 text-sm font-bold"' : 'class="text-purple-300 hover:text-white text-sm font-bold"'}>
-            ← Anterior
-          </button>
-          <button onclick="nextExercise()" ${index === allExercises.length - 1 ? 'disabled class="opacity-40 cursor-not-allowed text-slate-500 text-sm font-bold"' : 'class="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2 rounded-xl text-sm font-extrabold shadow-lg transition"'}>
-            Siguiente →
-          </button>
+          <div class="flex justify-between items-center pt-4 border-t border-purple-500/20">
+            <button onclick="prevExercise()" ${currentIndex === 0 ? 'disabled class="opacity-40 cursor-not-allowed text-slate-500 text-sm font-bold"' : 'class="text-purple-300 hover:text-white text-sm font-bold"'}>
+              ← Anterior
+            </button>
+            <button onclick="nextExercise(${exercises.length})" class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2.5 rounded-xl text-sm font-extrabold shadow-lg transition">
+              ${currentIndex === exercises.length - 1 ? 'Completar Día 🎉' : 'Siguiente →'}
+            </button>
+          </div>
         </div>
       `;
     }
@@ -199,17 +282,33 @@
       }
     }
 
-    function nextExercise() {
-      if (currentIndex < allExercises.length - 1) {
+    function nextExercise(totalInDay) {
+      if (currentIndex < totalInDay - 1) {
         currentIndex++;
-        renderExercise(currentIndex);
+        renderExerciseScreen();
+      } else {
+        // Desbloquear siguiente Día o Módulo
+        if (currentDay < 3) {
+          if (currentModule === unlockedModule && currentDay === unlockedDay) {
+            unlockedDay++;
+            localStorage.setItem('a2_unlocked_day', unlockedDay);
+          }
+        } else {
+          if (currentModule === unlockedModule) {
+            unlockedModule++;
+            unlockedDay = 1;
+            localStorage.setItem('a2_unlocked_module', unlockedModule);
+            localStorage.setItem('a2_unlocked_day', unlockedDay);
+          }
+        }
+        renderDaySelection();
       }
     }
 
     function prevExercise() {
       if (currentIndex > 0) {
         currentIndex--;
-        renderExercise(currentIndex);
+        renderExerciseScreen();
       }
     }
 
