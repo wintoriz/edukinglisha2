@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Edukinglish - Nivel A2 (Detectives)</title>
+  <title>Edukinglish - Detectives Nivel A2 (Mooney)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -21,9 +21,11 @@
 <div id="view-access" class="min-h-screen flex items-center justify-center p-4">
   <div class="w-full max-w-md">
     <div class="text-center mb-6 bounce-in">
-      <div class="text-7xl mb-2 float-slow">🐰</div>
+      <div class="w-28 h-28 mx-auto mb-3 rounded-3xl overflow-hidden border-2 border-purple-400/50 bg-slate-950/80 shadow-xl float-slow flex items-center justify-center">
+        <img src="./mooney.png" alt="Mooney" onerror="this.outerHTML='<span class=\'text-6xl\'>🐰</span>'" class="w-full h-full object-cover object-top" />
+      </div>
       <h1 class="text-4xl font-bold text-purple-300 font-heading">Edukinglish</h1>
-      <p class="text-purple-200 mt-1">¡Misiones de Detectives A2 con Mooney!</p>
+      <p class="text-purple-200 mt-1">¡Detectives Nivel A2 con Mooney!</p>
     </div>
 
     <div class="bg-slate-800/90 border border-purple-500/30 rounded-3xl shadow-2xl p-8 backdrop-blur-md">
@@ -34,7 +36,7 @@
         class="w-full p-3 rounded-xl bg-slate-900 border-2 border-purple-500/30 text-white mb-4 font-bold focus:border-purple-400 focus:outline-none">
       
       <label class="block text-sm font-bold text-purple-300 mb-1">Código o Palabra clave de alumno</label>
-      <input id="inp-code" type="text" maxlength="25" placeholder="Ej: EDU-001 o MOONEY-A2"
+      <input id="inp-code" type="text" maxlength="25" placeholder="Ej: EDUKINGLISH-1111"
         class="w-full p-3 rounded-xl bg-slate-900 border-2 border-purple-500/30 text-white mb-2 font-bold focus:border-purple-400 focus:outline-none uppercase">
       
       <p class="text-xs text-purple-400 mb-4">Ingresa tu código asignado para entrar a la plataforma.</p>
@@ -44,7 +46,7 @@
         ¡Comenzar Misión! ✨
       </button>
     </div>
-    <p class="text-center text-purple-300 text-xs mt-4">Nivel A2 · 10 Módulos · 150 Ejercicios</p>
+    <p class="text-center text-purple-300 text-xs mt-4">Nivel A2 · Detectives · 10 Módulos · 150 Ejercicios</p>
   </div>
 </div>
 
@@ -54,7 +56,9 @@
   <!-- Sidebar -->
   <aside class="w-full md:w-64 bg-purple-950/80 border-r border-purple-500/30 text-white p-5 flex-shrink-0 backdrop-blur-md">
     <div class="flex items-center gap-3 mb-5">
-      <a href="https://wintoriz.github.io/edukinglishmenu/" class="w-10 h-10 bg-purple-600/40 border border-purple-400/30 rounded-xl flex items-center justify-center text-2xl hover:bg-purple-600 transition" title="Menú Principal">🐰</a>
+      <a href="https://wintoriz.github.io/edukinglishmenu/" class="w-10 h-10 bg-purple-600/40 border border-purple-400/30 rounded-xl overflow-hidden flex items-center justify-center hover:bg-purple-600 transition" title="Menú Principal">
+        <img src="./mooney.png" alt="Mooney" onerror="this.outerHTML='<span class=\'text-2xl\'>🐰</span>'" class="w-full h-full object-cover object-top" />
+      </a>
       <div>
         <span class="font-heading text-xl tracking-wide text-purple-300 block leading-none">Edukinglish</span>
         <span class="text-[11px] text-purple-200">Nivel A2 · Detectives</span>
@@ -80,7 +84,7 @@
     <header class="bg-slate-800/80 border border-purple-500/30 p-6 rounded-3xl shadow-lg mb-6 backdrop-blur-md">
       <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <span class="text-xs font-bold text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full uppercase tracking-wider">Mooney's Detectives</span>
+          <span class="text-xs font-bold text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full uppercase tracking-wider">Detectives · Mooney</span>
           <h1 id="module-title" class="text-2xl md:text-3xl font-bold text-white font-heading mt-2">Módulo 1</h1>
           <p id="module-subtitle" class="text-purple-200 font-semibold text-sm mt-1"></p>
         </div>
@@ -122,9 +126,9 @@
 </div>
 
 <script>
-/* ================= CONEXIÓN HOJA GOOGLE SHEETS A2 ================= */
 const SHEET_ID = "1TpVGs9piS8ci_WnbiclniODiTR8VnjZtK7sRN7qXe_g";
 const EXERCISES_SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Nivel%20A2`;
+const STUDENTS_SHEET_URL  = `https://docs.google.com/spreadsheets/d/1YQlsfhsyaMw5XK8Vmh3g5dnJo6UeAG76OjLBejhmWmk/gviz/tq?tqx=out:csv&sheet=Hoja%201`;
 
 const moduleTitles = {
   "1": "Past Simple - To Be", "2": "Past Simple Regular Verbs", "3": "Past Simple Irregular Verbs",
@@ -132,7 +136,7 @@ const moduleTitles = {
   "7": "Modal Verbs & Rules", "8": "Comparatives & Superlatives", "9": "Past Continuous", "10": "Review & Final Quest"
 };
 
-const ACCESS_CODES_FALLBACK = ["MOONEY-A2", "EDUKINGLISH-ADMIN", "KING-001"];
+const ACCESS_CODES_FALLBACK = ["EDUKINGLISH-ADMIN"];
 const STORAGE_KEY = 'edk_profiles_a2_v1';
 
 let exercisesData = {};
@@ -176,7 +180,6 @@ async function loadDataFromSheets() {
       const csv = await res.text();
       const rows = parseCSV(csv);
       let data = {};
-      
       rows.forEach(row => {
         if (row.length > 5 && row[0] === 'A2' && row[5] && row[5] !== 'Instrucción / Pregunta') {
           const m = String(parseInt((row[1] || '').replace('Módulo', '').trim()) || 1);
@@ -197,10 +200,22 @@ async function loadDataFromSheets() {
     }
   } catch(e) { console.warn("Error leyendo hoja de Sheets A2."); }
 
+  try {
+    const res = await fetch(STUDENTS_SHEET_URL);
+    if (res.ok) {
+      const csv = await res.text();
+      const rows = parseCSV(csv);
+      rows.forEach(row => {
+        if (row[0] && row[0].trim().toUpperCase() !== 'CÓDIGO') {
+          remoteStudents.push(row[0].trim().toUpperCase());
+        }
+      });
+    }
+  } catch(e) { console.warn("Error leyendo hoja de códigos de alumnos."); }
+
   if (profile) updateUI();
 }
 
-/* ================= AUTENTICACIÓN ================= */
 function loadProfiles() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; }
 }
@@ -210,9 +225,7 @@ function saveProfiles() {
   all[profile.code] = profile;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
 }
-function todayStr() {
-  return new Date().toISOString().slice(0,10);
-}
+function todayStr() { return new Date().toISOString().slice(0,10); }
 
 function login() {
   const name = document.getElementById('inp-name').value.trim();
@@ -222,10 +235,11 @@ function login() {
 
   if (!name) { err.textContent = '❌ Escribe tu nombre para empezar.'; err.classList.remove('hidden'); return; }
 
-  const isValidLocal = ACCESS_CODES_FALLBACK.includes(code) || code.startsWith("EDU-") || code.startsWith("A2-");
+  const isValidRemote = remoteStudents.includes(code);
+  const isValidLocal = ACCESS_CODES_FALLBACK.includes(code);
 
-  if (!isValidLocal) {
-    err.textContent = '❌ Código no válido. Revisa tu código de alumno.'; 
+  if (!isValidRemote && !isValidLocal) {
+    err.textContent = '❌ Código no válido. Revisa tu código en la lista de alumnos.'; 
     err.classList.remove('hidden'); 
     return; 
   }
@@ -265,7 +279,6 @@ function savePos() {
   }
 }
 
-/* ================= NAVEGACIÓN Y DESBLOQUEO ================= */
 function dayKey(m,d){ return `${m}-${d}`; }
 function isModuleLocked(m){ 
   if (profile && profile.code === 'EDUKINGLISH-ADMIN') return false;
@@ -355,7 +368,6 @@ function updateUI() {
   renderExercise();
 }
 
-/* ================= EXTRACCIÓN Y LIMPIEZA AUTOMÁTICA DE AUDIOS ================= */
 function getActiveExercise() {
   const m = String(currentModule);
   const d = String(currentDay);
@@ -552,7 +564,6 @@ function nextExercise() {
   selectDay(Math.min(currentDay + 1, 3));
 }
 
-/* ================= INICIALIZACIÓN ================= */
 document.getElementById('inp-code').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 document.getElementById('inp-name').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 
